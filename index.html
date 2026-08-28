@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,maximum-scale=1">
     <title>延迟测速面板</title>
     <style>
         * {
@@ -13,87 +13,98 @@
         }
         body {
             background-color: #f5f7fa;
-            padding: 20px;
+            padding: 14px;
         }
         .card {
             background: #ffffff;
             border-radius: 20px;
-            padding: 24px;
+            padding: 18px;
             max-width: 680px;
             margin: 0 auto;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
         }
-        .control-bar{
-            display:flex;
-            gap:12px;
-            margin-bottom:16px;
-            flex-wrap: wrap;
-            align-items:center;
+        .ip-bar{
+            font-size:15px;
+            margin-bottom:14px;
+            color:#333;
+            line-height:1.6;
         }
         .add-row{
             display:flex;
             gap:8px;
             flex-wrap:wrap;
-            margin-bottom:16px;
+            margin-bottom:18px;
+            align-items:center;
         }
         input{
-            padding:7px 12px;
-            border-radius:12px;
+            padding:9px 12px;
+            border-radius:10px;
             border:1px solid #ddd;
             font-size:15px;
         }
+        #siteName{
+            width: 130px;
+        }
+        #siteUrl{
+            flex: 1;
+            min-width: 180px;
+        }
+        select{
+            padding:8px 10px;
+            border-radius:10px;
+            border:1px solid #ddd;
+            font-size:14px;
+            flex-shrink: 0;
+        }
         button{
-            padding:8px 16px;
-            border-radius:12px;
+            padding:9px 16px;
+            border-radius:10px;
             border:none;
             background:#4070f4;
             color:white;
             font-size:15px;
             cursor:pointer;
+            white-space: nowrap;
+            flex-shrink:0;
         }
         button.del{
             background:#ed4c5c;
-            padding:4px 10px;
-            font-size:13px;
-        }
-        button:disabled{
-            background:#b4c7f5;
-            cursor:not-allowed;
-        }
-        select{
             padding:7px 12px;
-            border-radius:12px;
-            border:1px solid #ddd;
-            font-size:15px;
+            font-size:13px;
         }
         .item {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 14px 0;
+            gap: 10px;
+            padding: 12px 2px;
             border-bottom: 1px solid #f0f0f0;
+            flex-wrap: nowrap;
         }
         .item:last-child {
             border-bottom: none;
         }
         .icon {
-            width: 36px;
-            height: 36px;
+            width: 28px;
             flex-shrink: 0;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            font-size:22px;
+            font-size:18px;
+            text-align:center;
         }
         .name {
-            flex: 1;
-            font-size: 20px;
+            width: 90px;
+            flex-shrink:0;
+            font-size: 16px;
             font-weight: 500;
+            white-space: nowrap;
+            overflow:hidden;
+            text-overflow:ellipsis;
         }
         .tag {
-            padding: 4px 12px;
+            width: 62px;
+            padding: 3px 4px;
             border-radius: 999px;
-            font-size: 14px;
+            font-size: 12px;
+            text-align:center;
+            flex-shrink:0;
         }
         .tag-cn {
             background: #e6ecff;
@@ -104,20 +115,24 @@
             color: #278c6c;
         }
         .ms {
-            font-size: 22px;
+            width:72px;
+            font-size: 18px;
             font-weight: 600;
-            min-width:70px;
             text-align:right;
+            flex-shrink:0;
         }
         .dot-group {
             display: flex;
-            gap: 6px;
+            gap: 3px;
+            flex:1;
+            min-width:110px;
         }
         .dot {
-            width: 12px;
-            height: 12px;
+            width: 9px;
+            height: 9px;
             border-radius: 50%;
             background:#cccccc;
+            flex-shrink: 0;
         }
         .green { background-color: #28a745; }
         .yellow { background-color: #f1c40f; }
@@ -126,20 +141,13 @@
 </head>
 <body>
 <div class="card" id="mainCard">
-    <div class="control-bar">
-        <button id="testBtn">重新测速</button>
-        <label>自动刷新：
-            <select id="intervalSel">
-                <option value="0">关闭</option>
-                <option value="30000">30秒</option>
-                <option value="60000" selected>60秒</option>
-                <option value="120000">120秒</option>
-            </select>
-        </label>
+    <div class="ip-bar">
+        IP：<span id="clientIp">加载中...</span>
+        &nbsp;|&nbsp;位置：<span id="location">加载中...</span>
     </div>
     <div class="add-row">
-        <input id="siteName" placeholder="站点名称" />
-        <input id="siteUrl" placeholder="域名，例：https://xxx.com/favicon.ico" style="flex:1;min-width:220px"/>
+        <input id="siteName" placeholder="站点名称"/>
+        <input id="siteUrl" placeholder="域名，例：https://xxx.com/favicon.ico"/>
         <select id="siteTag">
             <option value="国内">国内</option>
             <option value="国际">国际</option>
@@ -162,14 +170,25 @@ let siteList = [
     {name:"GPT‑OpenAI",tag:"国际",url:"https://openai.com/favicon.ico"},
     {name:"X(Twitter)",tag:"国际",url:"https://x.com/favicon.ico"}
 ];
-let timerId = null;
 const listWrap = document.getElementById("listWrap");
-const testBtn = document.getElementById("testBtn");
-const intervalSel = document.getElementById("intervalSel");
 const siteName = document.getElementById("siteName");
 const siteUrl = document.getElementById("siteUrl");
 const siteTag = document.getElementById("siteTag");
 const addBtn = document.getElementById("addBtn");
+const clientIpEl = document.getElementById("clientIp");
+const locationEl = document.getElementById("location");
+
+(async function getIpInfo(){
+  try{
+    const res = await fetch("https://api.ip.sb/geoip");
+    const json = await res.json();
+    clientIpEl.innerText = json.ip;
+    locationEl.innerText = `${json.country} ${json.city||""}`;
+  }catch(e){
+    clientIpEl.innerText = "获取失败";
+    locationEl.innerText = "获取失败";
+  }
+})();
 
 function renderList(){
     listWrap.innerHTML = "";
@@ -178,7 +197,7 @@ function renderList(){
         listWrap.innerHTML += `
         <div class="item" data-idx="${idx}">
             <div class="icon">🌐</div>
-            <div class="name">${site.name}</div>
+            <div class="name" title="${site.name}">${site.name}</div>
             <div class="tag ${tagClass}">${site.tag}</div>
             <div class="ms" data-ms>--</div>
             <div class="dot-group" data-dot>
@@ -193,7 +212,6 @@ function renderList(){
             const delIdx = Number(e.target.dataset.delidx);
             siteList.splice(delIdx,1);
             renderList();
-            runAllTest();
         }
     })
 }
@@ -254,21 +272,11 @@ async function testLatency(index,imgUrl){
     })
 }
 
-async function runAllTest(){
-    testBtn.disabled = true;
-    for(let i=0;i<siteList.length;i++){
-        await testLatency(i,siteList[i].url);
-        await new Promise(r=>setTimeout(r,150));
-    }
-    testBtn.disabled = false;
-}
-
-function resetAutoTimer(){
-    clearInterval(timerId);
-    const ms = Number(intervalSel.value);
-    if(ms > 0){
-        timerId = setInterval(runAllTest, ms);
-    }
+// 批量并发测速，全部站点同时发起请求
+async function batchPingAll(){
+    const tasks = siteList.map((site,i)=> testLatency(i, site.url));
+    await Promise.all(tasks);
+    setTimeout(batchPingAll, 200);
 }
 
 addBtn.onclick = ()=>{
@@ -280,15 +288,10 @@ addBtn.onclick = ()=>{
     siteName.value = "";
     siteUrl.value = "";
     renderList();
-    runAllTest();
 }
 
-testBtn.onclick = runAllTest;
-intervalSel.onchange = resetAutoTimer;
-
 renderList();
-runAllTest();
-resetAutoTimer();
+batchPingAll();
 </script>
 </body>
 </html>
