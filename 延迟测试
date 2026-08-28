@@ -188,7 +188,6 @@ function renderList(){
             <button class="del" data-delidx="${idx}">删除</button>
         </div>`;
     })
-    //绑定删除按钮
     document.querySelectorAll(".del").forEach(btn=>{
         btn.onclick = e=>{
             const delIdx = Number(e.target.dataset.delidx);
