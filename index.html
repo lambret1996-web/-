@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0,maximum-scale=1,user-scalable=no">
-    <title>网络延迟测速面板</title>
+    <title>延迟测速面板</title>
     <style>
         * {
             margin: 0;
@@ -127,6 +127,7 @@
             flex-shrink: 0;
             border-radius:6px;
             object-fit:cover;
+            content-visibility: visible;
         }
 
         .name {
@@ -190,11 +191,12 @@
     </style>
 </head>
 <body>
-<div class="page-title">网络延迟测试工具</div>
+<div class="page-title">网页延迟测试工具</div>
 <div class="card" id="mainCard">
     <div class="ip-bar">
         IP：<span id="clientIp"><strong>加载中...</strong></span>
         &nbsp;|&nbsp;位置：<span id="location"><strong>加载中...</strong></span>
+        &nbsp;|&nbsp;运营商：<span id="isp"><strong>加载中...</strong></span>
     </div>
 
     <div class="add-row">
@@ -216,11 +218,11 @@ let siteList = [
     {name:"Bilibili",tag:"国内",url:"https://www.bilibili.com/favicon.ico",icon:"https://www.bilibili.com/favicon.ico"},
     {name:"王者荣耀",tag:"国内",url:"https://pvp.qq.com/favicon.ico",icon:"https://pvp.qq.com/favicon.ico"},
     {name:"淘宝",tag:"国内",url:"https://www.taobao.com/favicon.ico",icon:"https://www.taobao.com/favicon.ico"},
-    {name:"GitHub",tag:"国际",url:"https://github.com",icon:"https://github.com/favicon.ico"},
-    {name:"telegram",tag:"国际",url:"https://telegram.org/favicon.ico",icon:"https://telegram.org/favicon.ico"},
+    {name:"GitHub",tag:"国际",url:"https://github.com/favicon.ico",icon:"https://github.com/favicon.ico"},
+    {name:"Telegram",tag:"国际",url:"https://telegram.org/favicon.ico",icon:"https://telegram.org/favicon.ico"},
     {name:"Cloudflare",tag:"国际",url:"https://www.cloudflare.com/favicon.ico",icon:"https://www.cloudflare.com/favicon.ico"},
     {name:"YouTube",tag:"国际",url:"https://www.youtube.com/favicon.ico",icon:"https://www.youtube.com/favicon.ico"},
-    {name:"ChatGPT",tag:"国际",url:"https://chatgpt.com/favicon.ico",icon:"https://openai.com/favicon.ico"},
+    {name:"ChatGPT",tag:"国际",url:"https://chat.openai.com/favicon.ico",icon:"https://chat.openai.com/favicon.ico"},
     {name:"X(Twitter)",tag:"国际",url:"https://x.com/favicon.ico",icon:"https://x.com/favicon.ico"}
 ];
 
@@ -231,6 +233,18 @@ const siteTag = document.getElementById("siteTag");
 const addBtn = document.getElementById("addBtn");
 const clientIpEl = document.getElementById("clientIp");
 const locationEl = document.getElementById("location");
+const ispEl = document.getElementById("isp");
+
+//运营商名称简单翻译
+function parseIsp(name){
+    if(!name) return "未知";
+    const low = name.toLowerCase();
+    if(low.includes("mobile")) return "中国移动";
+    if(low.includes("unicom")) return "中国联通";
+    if(low.includes("telecom")) return "中国电信";
+    if(low.includes("cernet")) return "教育网";
+    return name;
+}
 
 (async function getIpInfo(){
   try{
@@ -238,11 +252,25 @@ const locationEl = document.getElementById("location");
     const json = await res.json();
     clientIpEl.innerText = json.ip;
     locationEl.innerText = `${json.country} ${json.city||""}`;
+    ispEl.innerText = parseIsp(json.isp);
   }catch(e){
     clientIpEl.innerText = "获取失败";
     locationEl.innerText = "获取失败";
+    ispEl.innerText = "获取失败";
   }
 })();
+
+// 预加载全部图标，缓存到内存，避免高频重渲染反复请求图片
+const iconCache = {};
+function preloadIcons(){
+    siteList.forEach(site=>{
+        if(!iconCache[site.icon]){
+            const img = new Image();
+            img.src = site.icon;
+            iconCache[site.icon] = img;
+        }
+    })
+}
 
 function renderList(){
     listWrap.innerHTML = "";
@@ -250,7 +278,7 @@ function renderList(){
         const tagClass = site.tag === "国内" ? "tag-cn":"tag-intl";
         listWrap.innerHTML += `
         <div class="item" data-idx="${idx}">
-            <img class="icon-img" src="${site.icon}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><text y=%2220%22 font-size=%2220%22>🌐</text></svg>'">
+            <img class="icon-img" src="${site.icon}" crossorigin="anonymous" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><text y=%2220%22 font-size=%2220%22>🌐</text></svg>';this.onerror=null;">
             <div class="name" title="${site.name}">${site.name}</div>
             <div class="tag ${tagClass}">${site.tag}</div>
             <div class="ms" data-ms>--</div>
@@ -342,12 +370,16 @@ addBtn.onclick = ()=>{
     const u = siteUrl.value.trim();
     const t = siteTag.value;
     if(!n || !u) return;
-    siteList.push({name:n, tag:t, url:u, icon:u});
+    const iconUrl = new URL("/favicon.ico",u).href;
+    siteList.push({name:n, tag:t, url:u, icon:iconUrl});
+    preloadIcons();
     siteName.value = "";
     siteUrl.value = "";
     renderList();
 };
 
+// 初始化
+preloadIcons();
 renderList();
 batchPingAll();
 </script>
